@@ -1,0 +1,183 @@
+(define (domain Depot)
+
+(:requirements :negative-preconditions
+  	:hierarchy
+	:typing
+	:method-preconditions
+)
+
+(:types place locatable - object depot distributor - place truck hoist surface - locatable pallet crate - surface)
+
+(:predicates (at ?x - locatable ?y - place) (on ?x - crate ?y - surface) (in ?x - crate ?y - truck) (lifting ?x - hoist ?y - crate) (available ?x - hoist) (clear ?x - surface))
+
+(:task do_put_on
+  :parameters (?c - crate ?s2 - surface) )
+
+(:task do_clear
+  :parameters (?s1 - surface ?p1 - place) )
+
+(:task do_get_truck
+  :parameters (?t - truck ?p1 - place) )
+
+(:task do_lift_crate
+  :parameters (?c - crate ?p - place ?h - hoist) )
+
+(:task do_load_truck
+  :parameters (?c - crate ?s - surface ?p - place ?t - truck) )
+
+(:task do_unload_truck
+  :parameters (?c - crate ?s - surface ?p - place ?t - truck) )
+
+(:task do_clear_right_rec
+  :parameters ( ?s1 - surface  ?p1 - place ?final_crate - crate) )
+
+(:method m0_do_put_on
+  :parameters ( ?c - crate  ?s2 - surface )
+  :task (do_put_on ?c ?s2)
+  :precondition(and (on ?c ?s2))
+  :ordered-subtasks(and (t1 (nop))) ) 
+
+(:method m1_do_put_on_do_clear_1
+  :parameters ( ?c - crate  ?s2 - surface ?p - place ?h - hoist )
+  :task (do_put_on ?c ?s2)
+  :precondition(and (at ?c ?p))
+  :ordered-subtasks(and (t1 (nop)) (t2 (do_clear ?s2 ?p)) (t3 (do_lift_crate ?c ?p ?h)) (t4 (Drop ?h ?c ?s2 ?p))) )
+
+(:method m1_do_put_on_do_clear_2
+  :parameters ( ?c - crate  ?s2 - surface ?p - place ?h - hoist ?final_crate - crate)
+  :task (do_put_on ?c ?s2)
+  :precondition(and (at ?c ?p) (clear ?final_crate) (at ?final_crate ?p))
+  :ordered-subtasks(and (t1 (nop)) (t2 (do_clear_right_rec ?c ?p ?final_crate)) (t3 (do_clear ?s2 ?p)) (t4 (do_lift_crate ?c ?p ?h)) (t5 (Drop ?h ?c ?s2 ?p))) )  
+
+(:method m2_do_put_on_do_get_truck_1
+  :parameters ( ?c - crate  ?s2 - surface ?p - place ?t - truck ?h - hoist ?p2 - place)
+  :task (do_put_on ?c ?s2)
+  :precondition(and (in ?c ?t) (not (at ?t ?p)))
+  :ordered-subtasks(and (t1 (Drive ?t ?p2 ?p)) (t2 (do_clear ?s2 ?p)) (t3 (Unload ?h ?c ?t ?p)) (t4 (Drop ?h ?c ?s2 ?p))) )
+
+(:method m2_do_put_on_do_get_truck_2
+  :parameters ( ?c - crate  ?s2 - surface ?p - place ?t - truck ?h - hoist )
+  :task (do_put_on ?c ?s2)
+  :precondition(and (in ?c ?t) (at ?t ?p))
+  :ordered-subtasks(and (t1 (nop)) (t2 (do_clear ?s2 ?p)) (t3 (Unload ?h ?c ?t ?p)) (t4 (Drop ?h ?c ?s2 ?p))) )
+
+(:method m3_do_put_on_do_load_1
+  :parameters ( ?c - crate  ?s2 - surface ?s1 - surface ?p1 - place ?t - truck ?p2 - place ?h - hoist)
+  :task (do_put_on ?c ?s2)
+  :precondition(and (at ?c ?p1) (at ?s1 ?p1) (on ?c ?s1) (at ?h ?p1) (at ?t ?p1))
+  :ordered-subtasks(and (t1 (nop)) (t2 (do_clear ?c ?p1)) (t3 (Lift ?h ?c ?s1 ?p1)) (t4 (Load ?h ?c ?t ?p1)) (t5 (Drive ?t ?p1 ?p2)) (t6 (do_unload_truck ?c ?s2 ?p2 ?t))) )
+
+(:method m3_do_put_on_do_load_2
+  :parameters ( ?c - crate  ?s2 - surface ?s1 - surface ?p1 - place ?t - truck ?p2 - place ?p3 - place ?h - hoist)
+  :task (do_put_on ?c ?s2)
+  :precondition(and (at ?c ?p1) (at ?s1 ?p1) (on ?c ?s1) (at ?h ?p1) (not (at ?t ?p1)))
+  :ordered-subtasks(and (t1 (Drive ?t ?p3 ?p1)) (t2 (do_clear ?c ?p1)) (t3 (Lift ?h ?c ?s1 ?p1)) (t4 (Load ?h ?c ?t ?p1)) (t5 (Drive ?t ?p1 ?p2)) (t6 (do_unload_truck ?c ?s2 ?p2 ?t))) )
+
+(:method m4_do_clear
+  :parameters ( ?s1 - surface  ?p1 - place )
+  :task (do_clear ?s1 ?p1)
+  :precondition(and (clear ?s1) (at ?s1 ?p1))
+  :ordered-subtasks(and (t1 (nop))) )
+
+(:method m4_do_clear_to_right_rec
+  :parameters ( ?s1 - surface  ?p1 - place ?final_crate - crate)
+  :task (do_clear ?s1 ?p1)
+  :precondition(and (clear ?final_crate) (at ?final_crate ?p1))
+  :ordered-subtasks(and (t1 (nop)) (t2 (do_clear_right_rec ?s1 ?p1 ?final_crate)))) 
+
+(:method m5_do_clear_right_rec_1
+  :parameters ( ?s1 - surface  ?p1 - place ?final_crate - crate ?c - crate ?t - truck ?h1 - hoist )
+  :task (do_clear_right_rec ?s1 ?p1 ?final_crate)
+  :precondition(and (not (clear ?s1)) (on ?final_crate ?c) (at ?s1 ?p1) (at ?h1 ?p1))
+  :ordered-subtasks(and (t1 (Lift ?h1 ?final_crate ?c ?p1)) (t2 (do_get_truck ?t ?p1)) (t3 (Load ?h1 ?final_crate ?t ?p1)) (t4 (do_clear_right_rec ?s1 ?p1 ?c))))
+
+(:method m5_do_clear_right_rec_2
+  :parameters ( ?s1 - surface  ?p1 - place ?final_crate - crate ?t - truck ?h1 - hoist )
+  :task (do_clear_right_rec ?s1 ?p1 ?final_crate)
+  :precondition(and (not (clear ?s1)) (on ?final_crate ?s1) (at ?s1 ?p1) (at ?h1 ?p1))
+  :ordered-subtasks(and (t1 (Lift ?h1 ?final_crate ?s1 ?p1)) (t2 (do_get_truck ?t ?p1)) (t3 (Load ?h1 ?final_crate ?t ?p1))))
+
+(:method m6_do_get_truck
+  :parameters ( ?t - truck  ?p1 - place )
+  :task (do_get_truck ?t ?p1)
+  :precondition(and (at ?t ?p1))
+  :ordered-subtasks(and (t1 (nop))) ) 
+
+(:method m7_do_get_truck
+  :parameters ( ?t - truck  ?p1 - place ?p2 - place )
+  :task (do_get_truck ?t ?p1)
+  :precondition(and (not (at ?t ?p1)))
+  :ordered-subtasks(and (t1 (Drive ?t ?p2 ?p1))) ) 
+
+(:method m8_do_lift_crate_do_get_truck_1
+  :parameters ( ?c - crate  ?p - place  ?h - hoist ?t - truck )
+  :task (do_lift_crate ?c ?p ?h)
+  :precondition(and (in ?c ?t) (at ?h ?p) (at ?t ?p))
+  :ordered-subtasks(and (t1 (nop)) (t2 (Unload ?h ?c ?t ?p))) ) 
+
+(:method m8_do_lift_crate_do_get_truck_2
+  :parameters ( ?c - crate  ?p - place ?p2 - place ?h - hoist ?t - truck )
+  :task (do_lift_crate ?c ?p ?h)
+  :precondition(and (in ?c ?t) (at ?h ?p) (not (at ?t ?p)))
+  :ordered-subtasks(and (t1 (Drive ?t ?p2 ?p)) (t2 (Unload ?h ?c ?t ?p))) ) 
+
+(:method m9_do_lift_crate
+  :parameters ( ?c - crate  ?p - place  ?h - hoist ?s - surface )
+  :task (do_lift_crate ?c ?p ?h)
+  :precondition(and (on ?c ?s) (at ?c ?p) (at ?s ?p) (at ?h ?p))
+  :ordered-subtasks(and (t1 (Lift ?h ?c ?s ?p))) ) 
+
+(:method m10_do_load_truck_do_get_truck_1
+  :parameters ( ?c - crate  ?s - surface  ?p - place  ?t - truck ?h - hoist )
+  :task (do_load_truck ?c ?s ?p ?t)
+  :precondition(and (at ?c ?p) (at ?s ?p) (on ?c ?s) (at ?h ?p) (at ?t ?p))
+  :ordered-subtasks(and (t1 (nop)) (t2 (do_clear ?c ?p)) (t3 (Lift ?h ?c ?s ?p)) (t4 (Load ?h ?c ?t ?p))) )
+
+(:method m10_do_load_truck_do_get_truck_2
+  :parameters ( ?c - crate  ?s - surface  ?p - place ?p2 - place ?t - truck ?h - hoist )
+  :task (do_load_truck ?c ?s ?p ?t)
+  :precondition(and (at ?c ?p) (at ?s ?p) (on ?c ?s) (at ?h ?p) (not (at ?t ?p)) )
+  :ordered-subtasks(and (t1 (Drive ?t ?p2 ?p)) (t2 (do_clear ?c ?p)) (t3 (Lift ?h ?c ?s ?p)) (t4 (Load ?h ?c ?t ?p))) )
+
+(:method m11_do_unload_truck_do_clear_1
+  :parameters ( ?c - crate  ?s - surface  ?p - place  ?t - truck ?h - hoist )
+  :task (do_unload_truck ?c ?s ?p ?t)
+  :precondition(and (in ?c ?t) (at ?t ?p) (at ?h ?p) (at ?s ?p) (clear ?s) )
+  :ordered-subtasks(and (t1 (nop)) (t2 (Unload ?h ?c ?t ?p)) (t3 (Drop ?h ?c ?s ?p))) ) 
+
+(:method m11_do_unload_truck_do_clear_2
+  :parameters ( ?c - crate  ?s - surface ?final_crate - crate  ?p - place  ?t - truck ?h - hoist )
+  :task (do_unload_truck ?c ?s ?p ?t)
+  :precondition(and (in ?c ?t) (at ?t ?p) (at ?h ?p) (at ?s ?p) (clear ?final_crate) (at ?final_crate ?p))
+  :ordered-subtasks(and (t1 (nop)) (t2 (do_clear_right_rec ?s ?p ?final_crate)) (t3 (Unload ?h ?c ?t ?p)) (t4 (Drop ?h ?c ?s ?p))) ) 
+
+(:action Drive
+  :parameters (?x - truck ?y - place ?z - place)
+  :precondition (and (at ?x ?y))
+  :effect (and (not (at ?x ?y)) (at ?x ?z)))
+
+(:action Lift
+  :parameters (?x - hoist ?y - crate ?z - surface ?p - place)
+  :precondition (and (at ?x ?p) (available ?x) (at ?y ?p) (on ?y ?z) (clear ?y))
+  :effect (and (not (at ?y ?p)) (lifting ?x ?y) (not (clear ?y)) (not (available ?x)) (clear ?z) (not (on ?y ?z))))
+
+(:action Drop
+  :parameters (?x - hoist ?y - crate ?z - surface ?p - place)
+  :precondition (and (at ?x ?p) (at ?z ?p) (clear ?z) (lifting ?x ?y))
+  :effect (and (available ?x) (not (lifting ?x ?y)) (at ?y ?p) (not (clear ?z)) (clear ?y) (on ?y ?z)))
+
+(:action Load
+  :parameters (?x - hoist ?y - crate ?z - truck ?p - place)
+  :precondition (and (at ?x ?p) (at ?z ?p) (lifting ?x ?y))
+  :effect (and (not (lifting ?x ?y)) (in ?y ?z) (available ?x)))
+
+(:action Unload
+  :parameters (?x - hoist ?y - crate ?z - truck ?p - place)
+  :precondition (and (at ?x ?p) (at ?z ?p) (available ?x) (in ?y ?z))
+  :effect (and (not (in ?y ?z)) (not (available ?x)) (lifting ?x ?y)))
+
+(:action nop
+  :parameters ()
+  :precondition ()
+  :effect ())
+)
